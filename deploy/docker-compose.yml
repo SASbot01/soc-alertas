@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: admin
-      MYSQL_DATABASE: capitalhub
+      MYSQL_DATABASE: blackwolf
     ports:
       - "3306:3306"
     volumes:
@@ -67,14 +67,16 @@ services:
     networks:
       - blackwolf-net
 
-  # Optional Cloudflare Tunnel
-  # tunnel:
-  #   image: cloudflare/cloudflared
-  #   command: tunnel run
-  #   environment:
-  #     TUNNEL_TOKEN: ${TUNNEL_TOKEN}
-  #   networks:
-  #     - blackwolf-net
+  # Cloudflare Tunnel
+  tunnel:
+    image: cloudflare/cloudflared
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+    networks:
+      - blackwolf-net
 
 networks:
   blackwolf-net:

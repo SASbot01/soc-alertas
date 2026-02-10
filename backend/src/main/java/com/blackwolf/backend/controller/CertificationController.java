@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -59,5 +60,19 @@ public class CertificationController {
     @GetMapping("/metrics")
     public ResponseEntity<SocMetricsResponse> getMetrics(Authentication auth) {
         return ResponseEntity.ok(socMetricsService.getMetrics(authUtils.getCompanyId(auth)));
+    }
+
+    @PostMapping("/metrics")
+    public ResponseEntity<Map<String, String>> recordMetric(Authentication auth, @RequestBody Map<String, Object> body) {
+        String companyId = authUtils.getCompanyId(auth);
+        socMetricsService.recordMetric(
+                companyId,
+                (String) body.get("metricName"),
+                new BigDecimal(body.get("value").toString()),
+                (String) body.get("unit"),
+                body.get("target") != null ? new BigDecimal(body.get("target").toString()) : null,
+                (String) body.get("period")
+        );
+        return ResponseEntity.ok(Map.of("status", "recorded"));
     }
 }
