@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: capitalhub
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - blackwolf-net
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - blackwolf-net
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../deploy/Dockerfile.backend
+    ports:
+      - "8081:8080"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: blackwolf
+      MYSQL_USER: root
+      MYSQL_PASSWORD: admin
+      MINIO_URL: http://minio:9000
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      GLOBAL_SLACK_WEBHOOK: ${GLOBAL_SLACK_WEBHOOK:-}
+      GLOBAL_SLACK_ENABLED: ${GLOBAL_SLACK_ENABLED:-true}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - blackwolf-net
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../deploy/Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - blackwolf-net
+
+  # Optional Cloudflare Tunnel
+  # tunnel:
+  #   image: cloudflare/cloudflared
+  #   command: tunnel run
+  #   environment:
+  #     TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+  #   networks:
+  #     - blackwolf-net
+
+networks:
+  blackwolf-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  minio_data:
